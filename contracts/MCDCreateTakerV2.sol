@@ -16,7 +16,7 @@ contract MCDCreateTakerV2 {
     address public constant WETH_ADDRESS = 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2;
     address public constant NULL_ADDRESS = 0x0000000000000000000000000000000000000000;
 
-	address public constant DAI_JOIN_ADDRESS = 0x9759A6Ac90977b93B58547b4A71c78317f391A28;
+	// address public constant DAI_JOIN_ADDRESS = 0x9759A6Ac90977b93B58547b4A71c78317f391A28;
     address public constant ETH_JOIN_ADDRESS = 0x2F0b23f53734252Bda2277357e97e1517d6B042A;
 
     address public constant UNISWAP_WRAPPER_ADDRESS = 0x6403BD92589F825FfeF6b62177FCe9149947cb9f;
@@ -28,8 +28,6 @@ contract MCDCreateTakerV2 {
 	ILendingPool public constant lendingPool = ILendingPool(0x398eC7346DcD622eDc5ae82352F02bE94C62d119);
 
     Manager public constant manager = Manager(0x5ef30b9986345249bc32d8928B7ee64DE9435E39);	
-
-    MCDCreateTaker public constant mcdCreateTaker = MCDCreateTaker(0x);
 
     DefisaverLogger public constant logger = DefisaverLogger(0x5c55B921f590a89C1Ebe84dF170E655a82b62126);
 
