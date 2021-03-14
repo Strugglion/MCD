@@ -1,19 +1,24 @@
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "./IUniswapV2Router02.sol";
-import "./ILendingPool.sol";
+import "./interfaces/IUniswapV2Router02.sol";
+import "./interfaces/ILendingPool.sol";
+import "./utils/SafeERC20.sol";
+import "./utils/GasBurner.sol";
 import "./Manager.sol";
 import "./DefisaverLogger.sol";
-import "./SafeERC20.sol";
 import "./DFSExchangeData.sol";
 
-contract MCDCreateTakerV2 {
+contract MCDCreateTakerV2 is GasBurner {
+
+    using SafeERC20 for ERC20;
 
     address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address public constant USDT_ADDRESS = 0xdac17f958d2ee523a2206206994597c13d831ec7;
-    address public constant DAI_ADDRESS = 0x6b175474e89094c44da98b954eedeac495271d0f;
-    address public constant WETH_ADDRESS = 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2;
+    address public constant USDT_ADDRESS = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant NULL_ADDRESS = 0x0000000000000000000000000000000000000000;
 
 	// address public constant DAI_JOIN_ADDRESS = 0x9759A6Ac90977b93B58547b4A71c78317f391A28;
@@ -23,7 +28,7 @@ contract MCDCreateTakerV2 {
 
     address payable public constant MCD_CREATE_FLASH_LOAN = 0x409F216aa8034a12135ab6b74Bf6444335004BBd;
 
-    IUniswapV2Router02 public constant uni = IUniswapV2Router02(0x7a250d5630b4cf539739df2c5dacb4c659f2488d);
+    IUniswapV2Router02 public constant uni = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
 	ILendingPool public constant lendingPool = ILendingPool(0x398eC7346DcD622eDc5ae82352F02bE94C62d119);
 
@@ -53,17 +58,23 @@ contract MCDCreateTakerV2 {
 
         // 计算抵押的ETH数量（非ETH抵押资产需要通过uniswap转换成ETH）
         uint collETHAmount = _collData.collAmount;
-        address[] path = [_collData.collToken, WETH_ADDRESS];
+        address[] memory path = new address[](2);
+        path[0] = _collData.collToken;
+        path[1] = WETH_ADDRESS;
+        // address[2] memory path = [_collData.collToken, WETH_ADDRESS];
         if (_collData.collToken != ETH_ADDRESS) {
-            (, collETHAmount) = uni.swapExactTokensForETH(_collData.collAmount, 0, path, MCD_CREATE_FLASH_LOAN, block.timestamp + 1);
+            ERC20(_collData.collToken).safeTransferFrom(msg.sender, address(this), _collData.collAmount);
+            ERC20(_collData.collToken).safeTransfer(MCD_CREATE_FLASH_LOAN, _collData.collAmount);
+            // (, collETHAmount) = uni.swapExactTokensForETH(_collData.collAmount, 0, path, MCD_CREATE_FLASH_LOAN, block.timestamp + 1);
+            uint[] memory swappedAmounts = uni.swapExactTokensForETH(_collData.collAmount, 0, path, MCD_CREATE_FLASH_LOAN, block.timestamp + 1);
+            collETHAmount = swappedAmounts[swappedAmounts.length - 1];
         }
 
-        CreateData createData = CreateData(collETHAmount, _collData.daiAmount, ETH_JOIN_ADDRESS);
+        CreateData memory createData = CreateData(collETHAmount, _collData.daiAmount, ETH_JOIN_ADDRESS);
 
-        DFSExchangeData.ExchangeData = DFSExchangeData.ExchangeData(DAI_ADDRESS, ETH_ADDRESS, _collData.daiAmount, 0, 0, 0, 
-            NULL_ADDRESS, UNISWAP_WRAPPER_ADDRESS, abi.encode(path), 
-            [NULL_ADDRESS, NULL_ADDRESS, NULL_ADDRESS, 0, 0, abi.encode('')]);
-
+        DFSExchangeData.ExchangeData memory exchangeData = DFSExchangeData.ExchangeData(DAI_ADDRESS, ETH_ADDRESS, _collData.daiAmount, 
+            0, 0, 0, NULL_ADDRESS, UNISWAP_WRAPPER_ADDRESS, abi.encode(path), 
+            DFSExchangeData.OffchainData(NULL_ADDRESS, NULL_ADDRESS, NULL_ADDRESS, 0, 0, abi.encode('')));
 
         bytes memory packedData = _packData(createData, exchangeData);
         bytes memory paramsData = abi.encode(address(this), packedData);
