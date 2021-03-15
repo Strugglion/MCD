@@ -48,7 +48,7 @@ contract MCDCreateTakerV2 is GasBurner {
         uint daiAmount;
     }
 
-    function openWithLoanV2 (
+    function openWithLoan (
         CollData memory _collData
     ) public payable burnGas(20) {
 
@@ -58,14 +58,15 @@ contract MCDCreateTakerV2 is GasBurner {
 
         // 计算抵押的ETH数量（非ETH抵押资产需要通过uniswap转换成ETH）
         uint collETHAmount = _collData.collAmount;
+
+        // uniswap 交易路径
         address[] memory path = new address[](2);
         path[0] = _collData.collToken;
         path[1] = WETH_ADDRESS;
-        // address[2] memory path = [_collData.collToken, WETH_ADDRESS];
+        
         if (_collData.collToken != ETH_ADDRESS) {
             ERC20(_collData.collToken).safeTransferFrom(msg.sender, address(this), _collData.collAmount);
             ERC20(_collData.collToken).safeTransfer(MCD_CREATE_FLASH_LOAN, _collData.collAmount);
-            // (, collETHAmount) = uni.swapExactTokensForETH(_collData.collAmount, 0, path, MCD_CREATE_FLASH_LOAN, block.timestamp + 1);
             uint[] memory swappedAmounts = uni.swapExactTokensForETH(_collData.collAmount, 0, path, MCD_CREATE_FLASH_LOAN, block.timestamp + 1);
             collETHAmount = swappedAmounts[swappedAmounts.length - 1];
         }
